@@ -244,7 +244,7 @@ dac_ad9122_v1_0_S00_AXI_inst : dac_ad9122_v1_0_S00_AXI
 	
 rst_fifo_sync   : pulse_sync 
         generic map (
-        C_NUM_SYNCHRONIZER_STAGES =>  C_NUM_SYNCHRONIZER_STAGES
+        C_NUM_SYNCHRONIZER_STAGES =>  C_NUM_SYNCHRONIZER_STAGES + 2
         )
         port map(
             from_clk        => ref_dac_clk,
@@ -274,7 +274,7 @@ stream_fifo_inst    :   fifo_generator_0
 dac_cntr_reg_sinc_proc  : sync_data 
             generic map(
             C_WIDTH                     => C_S00_AXI_DATA_WIDTH,
-            C_NUM_SYNCHRONIZER_STAGES   => 2
+            C_NUM_SYNCHRONIZER_STAGES   => C_NUM_SYNCHRONIZER_STAGES
             )
             port map(
                 from_clk    => s00_axi_aclk,

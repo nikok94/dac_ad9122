@@ -63,7 +63,7 @@ entity b_ad9122 is
 end b_ad9122;
 
 architecture Behavioral of b_ad9122 is
-    type RAM is array (0 to 15) of std_logic_vector(C_DAC_DATA_WIDTH-1 downto 0);
+    type RAM is array (0 to 7) of std_logic_vector(C_DAC_DATA_WIDTH-1 downto 0);
     signal mem_chi  : RAM;
     signal mem_chq  : RAM;
     signal chi_raddr: std_logic_vector(2 downto 0);
@@ -83,6 +83,7 @@ architecture Behavioral of b_ad9122 is
     
     signal tready           : std_logic;
     signal rst              : std_logic:='1';
+    signal req_fifo_rst     : std_logic:='0';
     
     signal cntrl_reg        : std_logic_vector(C_CNTR_REG_WIDTH-1 downto 0):= (others => '0');
     signal frame_mod        : std_logic_vector(1 downto 0);
@@ -130,14 +131,15 @@ RESET_GEN_PROCESS : process(aclk)
     begin
         if (rising_edge(aclk)) then
             if (control_reg_en = '1') then
-                rst <= '1';
+                req_fifo_rst <= '1';
             elsif (fifo_ack = '1') then
-                rst <= '0';
+                req_fifo_rst <= '0';
             end if;
         end if;
     end process;
 
-fifo_rst <= rst;
+fifo_rst <= req_fifo_rst;
+rst <= req_fifo_rst or fifo_ack;
 tready <= not rst;
 s_tready <= tready;
 
@@ -273,7 +275,7 @@ FRAME_GEN_PROC  : process(aclk, frame_mod)
         elsif (rising_edge(aclk)) then
                 case frame_mod is
                     when b"00" => 
-                        s_chi_frm <= '1';
+                        s_chi_frm <= '0';
                         s_chq_frm <= '0';
                     when b"01" => 
                         s_chi_frm <= byte_frame_form;
@@ -336,19 +338,23 @@ READ_DATA_PROC  : process (aclk, frame_mod)
 OUT_GEN_PROC  : process(aclk)
     begin
        if (rising_edge(aclk)) then
-            if  (chi_d_valid = '0') or (chq_d_valid = '0') then
-                q_chi_clk <= '0';
-                q_chq_clk <= '0';
-                d_chi_frm <= '0';
-                d_chi_frm <= '0';
+            if  (s_tvalid = '1') and (chi_d_valid = '0') then
+                d_chi_frm <= '1';
+                d_chq_frm <= '1';
             else
-                q_chi_clk<= '1';
-                q_chq_clk<= '0'; 
                 d_chi_frm <= s_chi_frm;
                 d_chq_frm <= s_chq_frm;  
             end if;
         end if;
-    end process;  
+    end process;
+
+DCI_GEN_PROC    : process(aclk)
+    begin
+        if rising_edge(aclk) then
+            q_chi_clk<= '1';
+            q_chq_clk<= '0'; 
+        end if;
+    end process;   
     
 --delay_frame_proc : process(aclk)
 --    begin
